@@ -8,27 +8,23 @@ import org.junit.Test;
 
 import static constants.Consts.*;
 import static io.restassured.RestAssured.given;
+import static org.apache.http.HttpStatus.SC_NOT_FOUND;
+import static org.apache.http.HttpStatus.SC_OK;
 import static org.hamcrest.Matchers.notNullValue;
 
-public class OrderListTest {
+public class OrderListTest extends OrderListApi{
 
     @Before
     public void setUp() {
-        RestAssured.baseURI = BASE_URL;
+        requestSpecification();
     }
 
     @Test
     @DisplayName("Проверка, что при успешном response в теле ответа возвращается список заказов")
     @Description("Id Курьера : 119246")
     public void verifyGetMethodOrderListBody() {
-        OrderListResponseJson orderListResponseJson =
-        given()
-                .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                .when()
-                .get(REQUEST_ORDER_LIST + ID_COURIER_TRUE) // отправка POST-запроса
-                .body().as(OrderListResponseJson.class);
 
-        MatcherAssert.assertThat(orderListResponseJson.getOrders().size(), notNullValue());
+        MatcherAssert.assertThat(orderListResponseJson(ID_COURIER_TRUE).getOrders().size(), notNullValue());
 //        System.out.println("OrderId : " + orderListResponseJson.getOrders().get(0).getId());
 //        System.out.println("CourierId : " + orderListResponseJson.getOrders().get(0).getCourierId());
 //        System.out.println("FirstName : " + orderListResponseJson.getOrders().get(0).getFirstName());
@@ -60,36 +56,23 @@ public class OrderListTest {
     @DisplayName("Проверка статуса кода, когда успешное получение ответа списка заказов")
     @Description("Ожидаем статус кода  200")
     public void verifyGetMethodOrderListStatusCode200() {
-        given()
-                .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                .when()
-                .get(REQUEST_ORDER_LIST + ID_COURIER_TRUE) // отправка POST-запроса
-                .then().assertThat().statusCode(STATUS_CODE_200);
+
+        orderListStatusCode(ID_COURIER_TRUE, SC_OK);
     }
 
     @Test
     @DisplayName("Проверка, что курьер с идентификатором {courierId = 1} не найден")
     @Description("Id Курьера : 1")
     public void verifyGetMethodOrderListDontHaveCourierId() {
-        OrderListResponseJson orderListResponseJson =
-                given()
-                        .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                        .when()
-                        .get(REQUEST_ORDER_LIST + ID_COURIER_FALSE) // отправка POST-запроса
-                        .body().as(OrderListResponseJson.class);
 
-//        System.out.println("Message : " + orderListResponseJson.getMessage());
-        Assert.assertEquals("Курьер с идентификатором 1 не найден", orderListResponseJson.getMessage());
+        Assert.assertEquals("Курьер с идентификатором 1 не найден", orderListResponseJson(ID_COURIER_FALSE).getMessage());
     }
 
     @Test
     @DisplayName("Проверка статуса кода, когда неуспешное получение ответа списка заказов")
     @Description("Ожидаем статус кода  404")
     public void verifyGetMethodOrderListStatusCode404() {
-        given()
-                .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                .when()
-                .get(REQUEST_ORDER_LIST + ID_COURIER_FALSE) // отправка POST-запроса
-                .then().assertThat().statusCode(STATUS_CODE_404);
+
+        orderListStatusCode(ID_COURIER_FALSE, SC_NOT_FOUND);
     }
 }

@@ -1,5 +1,6 @@
 import io.qameta.allure.junit4.DisplayName;
 import io.restassured.RestAssured;
+import org.hamcrest.MatcherAssert;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -10,195 +11,77 @@ import org.junit.runners.Parameterized;
 import static constants.Consts.*;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.apache.http.HttpStatus.*;
 
-@RunWith(value = Parameterized.class)
-public class CourierCreateTest {
-    private final String login;
-    private final String password;
-    private final String firstName;
-    private final int responseCode;
-    private final boolean isOk;
-    private final String track;
-
-    public CourierCreateTest(String login, String password, String firstName, int responseCode, boolean isOk, String track) {
-        this.login = login;
-        this.password = password;
-        this.firstName = firstName;
-        this.responseCode = responseCode;
-        this.isOk = isOk;
-        this.track = track;
-    }
-
+public class CourierCreateTest extends CourierApi {
     @Before
     public void setUp() {
-        RestAssured.baseURI = BASE_URL;
+        requestSpecification();
     }
 
-    //@After
+    @After
     public void setDown(){
-        CourierLogin courierLogin = new CourierLogin("petya_ninja65", "12345");
-        CourierLoginResponseJson courierJson = given()
-                .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                .and()
-                .body(courierLogin) // передача объекта с данными
-                .when()
-                .post(REQUEST_AUTORIZATION_COURIER) // отправка POST-запроса
-                .body().as(CourierLoginResponseJson.class);
-
-        System.out.println(courierJson.getId());
-        String tempID = String.valueOf(courierJson.getId());
-        System.out.println(tempID);
-
-        CourierDelete courierDelete = new CourierDelete(tempID);
-        given()
-                .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                .and()
-                .body(courierDelete)
-                .when()
-                .delete(REQUEST_DELETE_COURIER + tempID)
-                .then().statusCode(STATUS_CODE_200);
-    }
-
-    @Parameterized.Parameters
-    public static Object[] getSumData()
-    {
-        return new Object[][]
-            {
-                   {"petya_ninja65", "12345", "Petya", 201, true, null},
-            };
+        CourierDeleteApi courierDelete = new CourierDeleteApi();
+        courierDelete.delete(String.valueOf(courierResponseJson(new CourierLogin(COURIER_LOGIN, COURIER_PASSWORD)).getId()));
     }
 
     @Test
     @DisplayName("Проверка - можно ли создать Курьера с заданными параметрами логин, пароль, имя курьера?")
     public void verifyPostMethodCreateNewCourier() {
-        CourierCreate courierCreate = new CourierCreate(login, password, firstName);
-        CourierCreateResponseJson courierCreateResponseJson =
-        given()
-                .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                .and()
-                .body(courierCreate) // передача объекта с данными
-                .when()
-                .post(REQUEST_CREATE_NEW_COURIER) // отправка POST-запроса
-                .body().as(CourierCreateResponseJson.class);
-        Assert.assertEquals(track, courierCreateResponseJson.getMessage());
-        setDown();
+
+        Assert.assertNull(courierCreateResponseJson(new CourierCreate(COURIER_LOGIN, COURIER_PASSWORD, COURIER_FIRST_NAME)).getTrack());
     }
 
     @Test
     @DisplayName("Проверка - Успешный запрос возвращает ok: true")
     public void verifyPostMethodCreateNewCourierIsTrue() {
-        CourierCreate courierCreate = new CourierCreate(login, password, firstName);
-        CourierCreateResponseJson courierCreateResponseJson =
-                given()
-                        .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                        .and()
-                        .body(courierCreate) // передача объекта с данными
-                        .when()
-                        .post(REQUEST_CREATE_NEW_COURIER) // отправка POST-запроса
-                        .body().as(CourierCreateResponseJson.class);
-        Assert.assertEquals(isOk, courierCreateResponseJson.isOk());
-        setDown();
+
+        Assert.assertTrue(courierCreateResponseJson(new CourierCreate(COURIER_LOGIN, COURIER_PASSWORD, COURIER_FIRST_NAME)).isOk());
     }
 
     @Test
-    @DisplayName("Проверка - кода ответа, с заданными параметрами логин, пароль, имя курьера")
+    @DisplayName("Проверка - кода ответа 201, с заданными параметрами логин, пароль, имя курьера")
     public void verifyPostMethodCreateNewCourierStatusCode() {
-        CourierCreate courierCreate = new CourierCreate(login, password, firstName);
-        given()
-                .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                .and()
-                .body(courierCreate) // передача объекта с данными
-                .when()
-                .post(REQUEST_CREATE_NEW_COURIER) // отправка POST-запроса
-                .then().assertThat().statusCode(responseCode);
-        setDown();
+
+        courierCreateStatusCode(new CourierCreate(COURIER_LOGIN, COURIER_PASSWORD, COURIER_FIRST_NAME), SC_CREATED);
     }
 
     @Test
     @DisplayName("Проверка - что нельзя создать двух одинаковых курьеров")
     public void verifyPostMethodCreateTwinsNewCourier() {
-        CourierCreate courierCreate = new CourierCreate(login, password, firstName);
-        given()
-                .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                .and()
-                .body(courierCreate) // передача объекта с данными
-                .when()
-                .post(REQUEST_CREATE_NEW_COURIER) // отправка POST-запроса
-                .then().assertThat().statusCode(responseCode);
 
-        CourierCreate courierCreate2 = new CourierCreate(login, password, firstName);
-        CourierCreateResponseJson courierCreateResponseJson =
-                given()
-                        .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                        .and()
-                        .body(courierCreate2) // передача объекта с данными
-                        .when()
-                        .post(REQUEST_CREATE_NEW_COURIER) // отправка POST-запроса
-                        .body().as(CourierCreateResponseJson.class);
-
-        Assert.assertEquals("Этот логин уже используется. Попробуйте другой.", courierCreateResponseJson.getMessage());
-        setDown();
+        courierCreateStatusCode(new CourierCreate(COURIER_LOGIN, COURIER_PASSWORD, COURIER_FIRST_NAME), SC_CREATED);
+        Assert.assertEquals(
+                "Этот логин уже используется. Попробуйте другой.",
+                courierCreateResponseJson(new CourierCreate(COURIER_LOGIN, COURIER_PASSWORD, COURIER_FIRST_NAME)).getMessage());
     }
 
     @Test
     @DisplayName("Проверка - возвращается ли ошибка, если создать пользователя с логином, который уже есть")
-    public void verifyPostMethodCreateTwinsNewCourierStatusCode() {
-        CourierCreate courierCreate = new CourierCreate(login, password, firstName);
-        given()
-                .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                .and()
-                .body(courierCreate) // передача объекта с данными
-                .when()
-                .post(REQUEST_CREATE_NEW_COURIER) // отправка POST-запроса
-                .then().assertThat().statusCode(responseCode);
+    public void verifyPostMethodCreateTwinsNewCourierStatusCode409() {
 
-        CourierCreate courierCreate2 = new CourierCreate(login, password, firstName);
-        given()
-                .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                .and()
-                .body(courierCreate2) // передача объекта с данными
-                .when()
-                .post(REQUEST_CREATE_NEW_COURIER) // отправка POST-запроса
-                .then().assertThat().statusCode(STATUS_CODE_409);
-        setDown();
+        courierCreateStatusCode(new CourierCreate(COURIER_LOGIN, COURIER_PASSWORD, COURIER_FIRST_NAME), SC_CREATED);
+        courierCreateStatusCode(new CourierCreate(COURIER_LOGIN, COURIER_PASSWORD, COURIER_FIRST_NAME), SC_CONFLICT);
     }
 
     @Test
     @DisplayName("Проверка - если нет значения в поле login, то запрос возвращает ошибку")
-    public void verifyPostMethodCreateNewCourierThenEmptyLogin() {
-        CourierCreate courierCreate = new CourierCreate("", password, firstName);
-        given()
-                .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                .and()
-                .body(courierCreate) // передача объекта с данными
-                .when()
-                .post(REQUEST_CREATE_NEW_COURIER) // отправка POST-запроса
-                .then().assertThat().statusCode(STATUS_CODE_400);
+    public void verifyPostMethodCreateNewCourierThenEmptyLoginStatusCode400() {
+
+        courierCreateStatusCode(new CourierCreate("", COURIER_PASSWORD, COURIER_FIRST_NAME), SC_BAD_REQUEST);
     }
 
     @Test
     @DisplayName("Проверка - если нет значения в поле password, то запрос возвращает ошибку")
-    public void verifyPostMethodCreateNewCourierThenEmptyPassword() {
-        CourierCreate courierCreate = new CourierCreate(login, "", firstName);
-        given()
-                .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                .and()
-                .body(courierCreate) // передача объекта с данными
-                .when()
-                .post(REQUEST_CREATE_NEW_COURIER) // отправка POST-запроса
-                .then().assertThat().statusCode(STATUS_CODE_400);
+    public void verifyPostMethodCreateNewCourierThenEmptyPasswordStatusCode400() {
+
+        courierCreateStatusCode(new CourierCreate(COURIER_LOGIN, "", COURIER_FIRST_NAME), SC_BAD_REQUEST);
     }
 
     @Test
     @DisplayName("Проверка - если нет значения в полей login и password, то запрос возвращает ошибку")
-    public void verifyPostMethodCreateNewCourierThenEmptyLoginPassword() {
-        CourierCreate courierCreate = new CourierCreate("", "", firstName);
-        given()
-                .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                .and()
-                .body(courierCreate) // передача объекта с данными
-                .when()
-                .post(REQUEST_CREATE_NEW_COURIER) // отправка POST-запроса
-                .then().assertThat().statusCode(STATUS_CODE_400);
+    public void verifyPostMethodCreateNewCourierThenEmptyLoginPasswordStatusCode400() {
+
+        courierCreateStatusCode(new CourierCreate("", "", COURIER_FIRST_NAME), SC_BAD_REQUEST);
     }
 }

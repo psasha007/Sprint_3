@@ -11,10 +11,12 @@ import java.util.List;
 
 import static constants.Consts.*;
 import static io.restassured.RestAssured.given;
+import static org.apache.http.HttpStatus.SC_CREATED;
+import static org.hamcrest.Matchers.in;
 import static org.hamcrest.Matchers.notNullValue;
 
 @RunWith(value = Parameterized.class)
-public class OrdersCreateTest {
+public class OrdersCreateTest extends OrdersCreateApi{
     private final String firstName;
     private final String lastName;
     private final String address;
@@ -40,7 +42,7 @@ public class OrdersCreateTest {
 
     @Before
     public void setUp() {
-        RestAssured.baseURI = BASE_URL;
+        requestSpecification();
     }
 
     @Parameterized.Parameters
@@ -66,34 +68,21 @@ public class OrdersCreateTest {
     @Test
     @DisplayName("Проверка значения статуса кода")
     @Description("Ожидаем статус кода 201")
-    public void verifyPostMethodCreateOrders() {
-        OrdersCreate ordersCreate = new OrdersCreate(firstName, lastName, address, metroStation, phone, rentTime,
-                deliveryDate, comment, color);
-        given()
-                .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                .and()
-                .body(ordersCreate) // передача объекта с данными
-                .when()
-                .post(REQUEST_CREATE_ORDERS) // отправка POST-запроса
-                .then().assertThat().statusCode(STATUS_CODE_201);
+    public void verifyPostMethodCreateOrdersStatusCode() {
+
+        createOrdersStatusCode(new OrdersCreate(firstName, lastName, address, metroStation, phone, rentTime,
+                deliveryDate, comment, color), SC_CREATED);
     }
 
     @Test
     @DisplayName("Проверка - создания заказа")
     @Description("Ожидаем что значение track больше 0")
     public void verifyPostMethodCreateOrdersTrack() {
-        OrdersCreate ordersCreate = new OrdersCreate(firstName, lastName, address, metroStation, phone, rentTime,
-                deliveryDate, comment, color);
-        OrdersCreateResponseJson ordersCreateResponseJson =
-        given()
-                .header("Content-type", "application/json") // передача Content-type в заголовке для указания типа файла
-                .and()
-                .body(ordersCreate) // передача объекта с данными
-                .when()
-                .post(REQUEST_CREATE_ORDERS) // отправка POST-запроса
-                .body().as(OrdersCreateResponseJson.class);
 
-//        System.out.println(ordersCreateResponseJson.getTrack());
-        Assert.assertTrue(ordersCreateResponseJson.getTrack() != null);
+        int condition = Integer.parseInt(createOrdersResponseJson(
+                new OrdersCreate(firstName, lastName, address, metroStation, phone, rentTime,
+                        deliveryDate, comment, color)).getTrack());
+
+        Assert.assertTrue(condition > 0);
     }
 }
